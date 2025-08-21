@@ -1,0 +1,44 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /cfe/generales/objetos
+spring:
+  application:
+    name: cfms-generales-almacenamiento-objetos
+  servlet:
+    multipart:
+      max-file-size: 1000MB
+      max-request-size: 1000MB
+  codec:
+    max-in-memory-size: 100MB
+
+webclient:
+  buffer:
+    max-in-memory-size: 100MB  # Definir el tamaño máximo de memoria para el buffer
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+
+minio:
+  bucket:
+    name: uploads
+  default:
+    folder: /
+  access:
+    name: miniocfe
+    secret: miniocfe
+  url: http://172.16.111.119:9000
+
+nodes:
+  temp:
+    id: ${TEMP_NODE_ID:07c8776f-e977-4c3a-bd02-acc1abd7fe51}
+
+alfresco:
+  username: storage
+  password: R0@7fk2D_2M7
+  base-url : http://172.16.111.121:8080/alfresco/api/-default-/public/alfresco/versions/1
+  share-url: http://172.16.111.121:8080/share/proxy/alfresco/slingshot/node/content/workspace/SpacesStore

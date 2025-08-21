@@ -1,0 +1,89 @@
+variables:
+  IMAGE_OPENJDK_GRADLE: gradle:7.3.3-jdk17-alpine
+
+stages:
+  - cleanBuild
+  - buildPush
+  - sonarDev
+  - deployDev
+  - deployQa
+
+cleanBuild:
+  image: $IMAGE_OPENJDK_GRADLE
+  stage: cleanBuild
+  script:
+    - echo "Cleaning leftovers from previous builds and Compiling the code..."
+    - sh ./gradlew clean build -x test
+  artifacts:
+    paths:
+      - build/libs/*.jar
+
+buildPush:
+  stage: buildPush
+  script:
+    - docker build -f docker/Dockerfile -t cfms-generales-almacenamiento-objetos-api .
+    - docker login -u admin -p QAZwsxedc2020 172.16.111.116:8083
+    - docker tag cfms-generales-almacenamiento-objetos-api:latest 172.16.111.116:8083/cfms-generales-almacenamiento-objetos-api:mpfn
+    - docker push 172.16.111.116:8083/cfms-generales-almacenamiento-objetos-api:mpfn
+
+sonarDev:
+    only:
+        refs:
+            - development
+    image: $IMAGE_OPENJDK_GRADLE
+    stage: sonarDev
+    tags:
+        - cfms-java-sb
+    script: 
+        - sh ./gradlew clean build -x test 
+        - sh ./gradlew sonar  
+            -Dsonar.projectKey=dev:backend:cfmsGeneralesAlmacenamientoObjetos 
+            -Dsonar.host.url=http://172.16.111.130/sonarcfe 
+            -Dsonar.login=squ_5ff2b187c6be3064d098f37858e4b8808e46f3f0 
+            -Dsonar.java.binaries=build/classes/java/main 
+            -Dsonar.exclusions=/node_modules/,/Test.java,/test/,/Test. 
+            -Dsonar.qualitygate.wait=true
+
+deployDev:
+  only:
+    refs:
+      - development
+    variables:
+      - $RELEASE != "produccion"
+  stage: deployDev
+  variables:
+    spring_profiles_active: "dev"
+  before_script:
+    - apk add openssh-client sshpass
+  script:
+    - export SSHPASS=$SSH_PRIVATE_KEY_3
+    - sshpass -e ssh -o StrictHostKeyChecking=no administrator@172.16.57.223 oc login -u developer -p developer https://api.dev.ocp4.cfe.mpfn.gob.pe:6443
+    - sshpass -e ssh -o StrictHostKeyChecking=no administrator@172.16.57.223 oc project development
+    - sshpass -e ssh -o StrictHostKeyChecking=no administrator@172.16.57.223 oc import-image cfms-generales-almacenamiento-objetos-api:mpfn || true
+    - sshpass -e ssh -o StrictHostKeyChecking=no administrator@172.16.57.223 oc delete deployment cfms-generales-almacenamiento-objetos-api || true
+    - sshpass -e ssh -o StrictHostKeyChecking=no administrator@172.16.57.223 oc delete service cfms-generales-almacenamiento-objetos-api || true
+    - sshpass -e ssh -o StrictHostKeyChecking=no administrator@172.16.57.223 oc delete route cfms-generales-almacenamiento-objetos-api || true
+    - sshpass -e ssh -o StrictHostKeyChecking=no administrator@172.16.57.223 oc new-app --image=172.16.111.116:8083/cfms-generales-almacenamiento-objetos-api:mpfn --name=cfms-generales-almacenamiento-objetos-api --insecure-registry=true -e spring_profiles_active=$spring_profiles_active -l 'app.kubernetes.io/part-of=cfe-backend,app.openshift.io/runtime=spring-boot' || true
+    - sshpass -e ssh -o StrictHostKeyChecking=no administrator@172.16.57.223 oc expose service/cfms-generales-almacenamiento-objetos-api || true
+
+deployQa:
+  only:
+    refs:
+      - qa
+    variables:
+      - $RELEASE != "produccion"
+  stage: deployQa
+  variables:
+    spring_profiles_active: "qa"
+  before_script:
+    - apk add openssh-client sshpass
+  script:
+    - export SSHPASS=$SSH_PRIVATE_KEY_4
+    - sshpass -e ssh -o StrictHostKeyChecking=no chuamancaja@172.16.111.231 oc login -u developer -p developer https://api.ocp4.cfe.mpfn.gob.pe:6443
+    - sshpass -e ssh -o StrictHostKeyChecking=no chuamancaja@172.16.111.231 oc project qa
+    - sshpass -e ssh -o StrictHostKeyChecking=no chuamancaja@172.16.111.231 oc import-image cfms-generales-almacenamiento-objetos-api:mpfn || true
+    - sshpass -e ssh -o StrictHostKeyChecking=no chuamancaja@172.16.111.231 oc delete deployment cfms-generales-almacenamiento-objetos-api || true
+    - sshpass -e ssh -o StrictHostKeyChecking=no chuamancaja@172.16.111.231 oc delete service cfms-generales-almacenamiento-objetos-api || true
+    - sshpass -e ssh -o StrictHostKeyChecking=no chuamancaja@172.16.111.231 oc delete route cfms-generales-almacenamiento-objetos-api || true
+    - sshpass -e ssh -o StrictHostKeyChecking=no chuamancaja@172.16.111.231 oc new-app --image=172.16.111.116:8083/cfms-generales-almacenamiento-objetos-api:mpfn --name=cfms-generales-almacenamiento-objetos-api --insecure-registry=true -e spring_profiles_active=$spring_profiles_active -l 'app.kubernetes.io/part-of=cfe-backend,app.openshift.io/runtime=spring-boot' || true
+    - sshpass -e ssh -o StrictHostKeyChecking=no chuamancaja@172.16.111.231 oc expose service/cfms-generales-almacenamiento-objetos-api || true

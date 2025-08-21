@@ -1,0 +1,60 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /cfe/generales/objetos
+  tomcat:
+    connection-timeout: 600000
+    max-swallow-size: 1000MB
+    max-http-form-post-size: 50MB
+    keep-alive-timeout: 600000
+spring:
+  application:
+    name: cfms-generales-almacenamiento-objetos
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 1000MB
+      max-request-size: 1000MB
+  codec:
+    max-in-memory-size: 100MB
+
+webclient:
+  timeout: 600000
+  timeout-handler: 600
+  buffer:
+    max-in-memory-size: 100MB  # Definir el tamaño máximo de memoria para el buffer
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+
+minio:
+  bucket:
+    name: uploads
+  default:
+    folder: /
+  access:
+    name: miniocfe
+    secret: miniocfe
+  url: http://172.16.111.119:9000
+
+nodes:
+  temp:
+    id: ${TEMP_NODE_ID:744cfce4-97f4-4d30-8229-ad09cf013f5d}
+
+alfresco:
+  username: storage
+  password: R0@7fk2D_2M7
+  base-url : http://172.16.111.122:8080/alfresco/api/-default-/public/alfresco/versions/1
+  share-url: http://172.16.111.122:8080/share/proxy/alfresco/slingshot/node/content/workspace/SpacesStore
+
+logging:
+  level:
+    org.springframework.web.reactive.function.client.WebClient: DEBUG
+    org.springframework.web.reactive.socket: DEBUG
+    org.springframework.web.reactive: DEBUG
+    org.apache.coyote.http11: ERROR
+    org.apache.tomcat.util.net: ERROR
